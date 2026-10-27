@@ -1,12 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { useEditor } from '../store'
+import { useTheme } from '../../ui/theme'
 
 /**
  * While the AI writes a new page, the empty part of the canvas is a basin of still water with a little of the
  * logo's blue in it: a real fluid (a small Navier-Stokes solver on the GPU). Stir it with the pointer, click to
  * drop more ink; faint currents keep it alive on its own. The sections settle on top of it as they are written,
  * and it clears when the page is complete. Nothing is hidden by it: the words say what the AI is doing right now.
+ * In the dark editor the water is night water: a black sheet with the same blue drifting in it, never glowing.
  */
+
+/** the dark sheet and how the blue sits in it: translucent, capped so it never glows */
+const NIGHT = { sheet: '#111111', rgb: [0.302, 0.741, 0.973] as [number, number, number], gain: 3.45, cap: 0.6 }
 export function InkWait({ height }: { height: number }) {
   const host = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -16,6 +21,12 @@ export function InkWait({ height }: { height: number }) {
     return last && last !== 'Writing your page' ? last : 'Reading your request'
   })
   const still = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  // the theme is read on every frame: switching it mid-wait recolours the water without starting it over
+  const dark = useTheme() === 'dark'
+  const night = useRef(dark)
+  useEffect(() => {
+    night.current = dark
+  }, [dark])
 
   useEffect(() => {
     const cv = canvas.current, el = host.current
@@ -58,7 +69,7 @@ export function InkWait({ height }: { height: number }) {
         fluid.splat(Math.random() * W, Math.random() * H, Math.cos(a) * 70, Math.sin(a) * 70, Math.random() < 0.2 ? DEEP(0.04) : INK(0.05))
       }
       fluid.step(dt)
-      fluid.render()
+      fluid.render(night.current)
     }
     raf = requestAnimationFrame(tick)
     return () => {
@@ -73,7 +84,7 @@ export function InkWait({ height }: { height: number }) {
   }, [height, still])
 
   return (
-    <div ref={host} className="ink-wait fade-in" style={{ position: 'relative', height, background: '#fff', overflow: 'hidden', cursor: 'crosshair', touchAction: 'none' }} aria-live="polite">
+    <div ref={host} className="ink-wait fade-in" style={{ position: 'relative', height, background: dark ? NIGHT.sheet : '#fff', overflow: 'hidden', cursor: 'crosshair', touchAction: 'none' }} aria-live="polite">
       {/* no words in the water: the list on the left says what is happening (the label is for screen readers) */}
       {!still && <canvas ref={canvas} aria-label={label} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />}
     </div>
@@ -85,7 +96,8 @@ export function InkWait({ height }: { height: number }) {
 interface Fluid {
   splat(x: number, y: number, dx: number, dy: number, color: [number, number, number]): void
   step(dt: number): void
-  render(): void
+  /** night: the dark sheet with the blue in it; otherwise ink taken from white paper */
+  render(night: boolean): void
   dispose(): void
 }
 interface FBO { tex: WebGLTexture; fbo: WebGLFramebuffer; w: number; h: number; tx: number; ty: number; attach(id: number): number }
@@ -112,8 +124,10 @@ vec2 vel = texture2D(uVelocity, vUv).xy; vel += force*dt; vel = min(max(vel, -10
 void main(){ float L = texture2D(uPressure, vL).x, R = texture2D(uPressure, vR).x, T = texture2D(uPressure, vT).x, B = texture2D(uPressure, vB).x; float d = texture2D(uDivergence, vUv).x; gl_FragColor = vec4((L+R+B+T-d)*.25, 0., 0., 1.); }`,
   gradient: `precision mediump float; varying vec2 vUv, vL, vR, vT, vB; uniform sampler2D uPressure, uVelocity;
 void main(){ float L = texture2D(uPressure, vL).x, R = texture2D(uPressure, vR).x, T = texture2D(uPressure, vT).x, B = texture2D(uPressure, vB).x; vec2 vel = texture2D(uVelocity, vUv).xy; vel -= vec2(R-L, T-B); gl_FragColor = vec4(vel, 0., 1.); }`,
-  display: `precision highp float; varying vec2 vUv; uniform sampler2D uTexture;
-void main(){ vec3 ink = texture2D(uTexture, vUv).rgb; gl_FragColor = vec4(clamp(vec3(1.) - ink, 0., 1.), 1.); }`,
+  // paper: the ink is taken from white. night: its amount (the red it takes away) lays the blue over the dark sheet
+  display: `precision highp float; varying vec2 vUv; uniform sampler2D uTexture; uniform float night, gain, cap; uniform vec3 sheet, blue;
+void main(){ vec3 ink = texture2D(uTexture, vUv).rgb; vec3 paper = clamp(vec3(1.) - ink, 0., 1.);
+vec3 water = mix(sheet, blue, clamp(ink.r*gain, 0., cap)); gl_FragColor = vec4(mix(paper, water, night), 1.); }`,
 }
 
 function makeFluid(canvas: HTMLCanvasElement): Fluid | null {
@@ -215,7 +229,17 @@ function makeFluid(canvas: HTMLCanvasElement): Fluid | null {
     P.advection.bind(); ts(P.advection); gl.uniform1i(P.advection.u.uVelocity, velocity.read.attach(0)); gl.uniform1i(P.advection.u.uSource, velocity.read.attach(0)); gl.uniform1f(P.advection.u.dt, dt); gl.uniform1f(P.advection.u.dissipation, cfg.velocityDissipation); blit(velocity.write); velocity.swap()
     gl.uniform1i(P.advection.u.uVelocity, velocity.read.attach(0)); gl.uniform1i(P.advection.u.uSource, dye.read.attach(1)); gl.uniform1f(P.advection.u.dissipation, cfg.densityDissipation); blit(dye.write); dye.swap()
   }
-  const render = () => { P.display.bind(); gl.uniform1i(P.display.u.uTexture, dye.read.attach(0)); blit(null) }
+  const sheet = [0x11 / 255, 0x11 / 255, 0x11 / 255]
+  const render: Fluid['render'] = (night) => {
+    P.display.bind()
+    gl.uniform1i(P.display.u.uTexture, dye.read.attach(0))
+    gl.uniform1f(P.display.u.night, night ? 1 : 0)
+    gl.uniform1f(P.display.u.gain, NIGHT.gain)
+    gl.uniform1f(P.display.u.cap, NIGHT.cap)
+    gl.uniform3f(P.display.u.sheet, sheet[0], sheet[1], sheet[2])
+    gl.uniform3f(P.display.u.blue, NIGHT.rgb[0], NIGHT.rgb[1], NIGHT.rgb[2])
+    blit(null)
+  }
   // (the context is left to the canvas: React mounts twice in development, and a lost context never comes back)
   const dispose = () => { gl.bindFramebuffer(gl.FRAMEBUFFER, null) }
   return { splat, step, render, dispose }
