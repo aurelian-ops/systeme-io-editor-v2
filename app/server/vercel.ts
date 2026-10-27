@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { aiRoutes, SKILL_TEXT, type Handler } from './ai.ts'
-import { blobStore } from './blobStore.ts'
+import { blobSettings, blobStore } from './blobStore.ts'
 import { geoHandler } from './geo.ts'
 import { diskStore } from './store.ts'
 
@@ -17,9 +17,9 @@ Object.assign(SKILL_TEXT, __SKILLS__)
 
 const log = { info: (m: string) => console.log(m), warn: (m: string) => console.warn(m), error: (m: string) => console.error(m) }
 // Vercel Blob when a store is connected to the project; a temporary folder otherwise (a local run of the build)
-const blob = !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)
-const store = blob ? blobStore() : diskStore(join(tmpdir(), 'editor-ai'))
-if (!blob && process.env.VERCEL) console.warn('[editor-ai] No Blob store connected: created photos are not kept. Connect a Blob store to the project.')
+const blob = blobSettings()
+const store = blob ? blobStore(blob) : diskStore(join(tmpdir(), 'editor-ai'))
+if (process.env.VERCEL) console.log(blob ? `[editor-ai] photos and uploads kept in Vercel Blob (${blob.token ? 'read-write token' : 'store id'})` : '[editor-ai] No Blob store connected: created photos are not kept. Connect a Blob store to the project.')
 const routes: [string, Handler][] = [...aiRoutes(process.env, store, log), ['/api/geo', geoHandler]]
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
