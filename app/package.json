@@ -1,0 +1,47 @@
+{
+  "name": "systeme-io-editor-v2",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "build:vercel": "npm run build && vite build --config vite.api.config.ts && node scripts/vercel-output.mjs",
+    "lint": "oxlint",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.20.4",
+    "@codemirror/lang-html": "^6.4.9",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/lint": "^6.9.7",
+    "@codemirror/search": "^6.7.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@lezer/highlight": "^1.2.5",
+    "@vercel/blob": "2.8.1",
+    "codemirror": "^6.0.1",
+    "countries-and-timezones": "^3.11.0",
+    "country-flag-icons": "^1.5.13",
+    "html-to-image": "^1.11.11",
+    "libphonenumber-js": "^1.11.14",
+    "lucide-react": "^1.59.0",
+    "openai": "^7.36.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "oxlint": "^1.81.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  },
+  "overrides": {
+    "zod": "4.6.7"
+  }
+}
