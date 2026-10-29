@@ -393,7 +393,12 @@ export function PopupCanvasLayer() {
   const frame = DEVICE_WIDTH[device]
   const zoom = Math.min(1, (w - 80) / frame)
   return (
-    <div ref={ref} className="fade-in absolute inset-x-0 bottom-0 top-12 z-[60] flex flex-col" style={{ background: 'rgba(10,10,10,.42)' }}>
+    // only over the page, between the floating panels, so the popup's settings stay usable while it shows
+    <div
+      ref={ref}
+      className="fade-in absolute bottom-0 top-12 z-[60] flex flex-col"
+      style={{ left: 'var(--left-inset, 0px)', right: 'var(--right-inset, 0px)', background: 'rgba(10,10,10,.42)' }}
+    >
       <div className="flex flex-none justify-center pt-4">
         <div className="flex h-8 items-center gap-2 rounded-[8px] bg-[var(--hud)] pl-3 pr-1 text-[12px] font-medium text-white shadow-[var(--shadow-pop)]">
           <span>Editing popup</span>
