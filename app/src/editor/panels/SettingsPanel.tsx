@@ -184,7 +184,14 @@ export function SettingsPanel() {
         <Group title="Affiliation" defaultOpen={false}>
           <Row label="Display an affiliate badge to earn lifetime commissions">
             <Toggle checked={ps.affiliateBadge} onChange={(v) => setS({ affiliateBadge: v }, false)} label="Display an affiliate badge" />
+          </Row>
+        </Group>
+
+        <Group title="Animations and photos" defaultOpen={false}>
+          <Row label="Animations on the live page">
             <Toggle checked={ps.animations !== false} onChange={(v) => setS({ animations: v }, false)} label="Animations on the live page" />
+          </Row>
+          <Row label="AI creates the photos it plans">
             <Toggle checked={doc.brief?.photos !== 'own'} onChange={(v) => update((d) => void (d.brief = { ...d.brief, photos: v ? 'ai' : 'own' }), { label: 'Photos choice' })} label="AI creates the photos it plans" />
           </Row>
         </Group>
