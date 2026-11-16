@@ -8,7 +8,6 @@ A prototype of the next systeme.io page editor: the same layout as today's edito
 |---|---|
 | `app/` | The editor (React + Vite) and its AI server. This is what gets deployed. |
 | `research/` | Research reports behind the AI and design decisions. |
-| `apple-design.md`, `premium-ui-playbook.md` | The design rules the editor follows. |
 
 ## Run it locally
 
